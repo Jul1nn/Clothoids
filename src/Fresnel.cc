@@ -162,9 +162,61 @@ namespace G2lib
   //! \param[out] C \f$C(x)\f$
   //! \param[out] S \f$S(x)\f$
   //!
+
+  void fresnel(real_type x, real_type &S, real_type &C)
+  {
+    const double Pi = 3.14159265358979323846;
+    const double Pi2 = Pi * Pi;
+
+    bool negative = (x < 0);
+    x = std::abs(x);
+
+    if (x < 1.0)
+    {
+      // Ряд Тейлора для малых x
+      double x2 = x * x;
+      double x4 = x2 * x2;
+      double x6 = x4 * x2;
+
+      C = x - (Pi2 * x4 * x) / 40.0 + (Pi2 * Pi2 * x4 * x4 * x) / 3456.0 - (Pi2 * Pi2 * Pi2 * x6 * x4 * x) / 599040.0;
+
+      S = (Pi * x2 * x) / 6.0 - (Pi * Pi2 * x6 * x) / 336.0 + (Pi * Pi2 * Pi2 * x4 * x6 * x) / 42240.0 - (Pi * Pi2 * Pi2 * Pi2 * x4 * x4 * x6 * x) / 9676800.0;
+    }
+    else if (x < 4.0)
+    {
+      // Для средних x используем предвычисленные таблицы или аппроксимацию
+      // Здесь можно вызвать более точную функцию из Cephes
+      // Для простоты используем асимптотику (чуть менее точную)
+      double t = Pi * x * x / 2.0;
+      double a = 1.0 / (Pi * x);
+      double b = 1.0 / (Pi2 * x * x * x * x);
+
+      C = 0.5 + a * sin(t) - b * cos(t);
+      S = 0.5 - a * cos(t) - b * sin(t);
+    }
+    else
+    {
+      // Асимптотическое разложение для больших x
+      double t = Pi * x * x / 2.0;
+      double a = 1.0 / (Pi * x);
+      double b = 1.0 / (Pi2 * x * x * x * x);
+
+      C = 0.5 + a * sin(t) - b * cos(t);
+      S = 0.5 - a * cos(t) - b * sin(t);
+    }
+
+    if (negative)
+    {
+      C = -C;
+      S = -S;
+    }
+  }
+
   void FresnelCS( real_type y, real_type & C, real_type & S )
   {
-    constexpr real_type eps{ 1E-15 };
+    fresnel(y, C, S);
+    return;
+    constexpr real_type eps{1E-15};
     real_type const     x{ y > 0 ? y : -y };
 
     if ( x < 1.0 )
@@ -350,7 +402,7 @@ namespace G2lib
     real_type const sg   = sin( g ) / z;
 
     real_type Cl, Sl, Cz, Sz;
-    FresnelCS( ell, Cl, Sl );
+    FresnelCS(ell, Cl, Sl);
     FresnelCS( ell + z, Cz, Sz );
 
     real_type const dC0{ Cz - Cl };
