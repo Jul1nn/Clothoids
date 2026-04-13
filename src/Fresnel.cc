@@ -77,6 +77,42 @@ namespace G2lib
   // email: sivakanth.telasula@gmail.com
   // date: August 11, 2005
   */
+  static constexpr real_type fn[] = { 0.49999988085884732562,   1.3511177791210715095,   1.3175407836168659241,
+                                      1.1861149300293854992,    0.7709627298888346769,   0.4173874338787963957,
+                                      0.19044202705272903923,   0.06655998896627697537,  0.022789258616785717418,
+                                      0.0040116689358507943804, 0.0012192036851249883877 };
+
+  static constexpr real_type fd[] = { 1.0,
+                                      2.7022305772400260215,
+                                      4.2059268151438492767,
+                                      4.5221882840107715516,
+                                      3.7240352281630359588,
+                                      2.4589286254678152943,
+                                      1.3125491629443702962,
+                                      0.5997685720120932908,
+                                      0.20907680750378849485,
+                                      0.07159621634657901433,
+                                      0.012602969513793714191,
+                                      0.0038302423512931250065 };
+
+  static constexpr real_type gn[] = { 0.50000014392706344801,    0.032346434925349128728,   0.17619325157863254363,
+                                      0.038606273170706486252,   0.023693692309257725361,   0.007092018516845033662,
+                                      0.0012492123212412087428,  0.00044023040894778468486, -8.80266827476172521e-6,
+                                      -1.4033554916580018648e-8, 2.3509221782155474353e-10 };
+
+  static constexpr real_type gd[] = { 1.0,
+                                      2.0646987497019598937,
+                                      2.9109311766948031235,
+                                      2.6561936751333032911,
+                                      2.0195563983177268073,
+                                      1.1167891129189363902,
+                                      0.57267874755973172715,
+                                      0.19408481169593070798,
+                                      0.07634808341431248904,
+                                      0.011573247407207865977,
+                                      0.0044099273693067311209,
+                                      -0.00009070958410429993314 };
+
 #endif
 
   /*
@@ -126,60 +162,148 @@ namespace G2lib
   //! \param[out] C \f$C(x)\f$
   //! \param[out] S \f$S(x)\f$
   //!
-
-  void fresnel(real_type x, real_type &S, real_type &C)
+  void FresnelCS( real_type y, real_type & C, real_type & S )
   {
-    const double Pi = 3.14159265358979323846;
-    const double Pi2 = Pi * Pi;
+    constexpr real_type eps{ 1E-15 };
+    real_type const     x{ y > 0 ? y : -y };
 
-    bool negative = (x < 0);
-    x = std::abs(x);
-
-    if (x < 1.0)
+    if ( x < 1.0 )
     {
-      // Ряд Тейлора для малых x
-      double x2 = x * x;
-      double x4 = x2 * x2;
-      double x6 = x4 * x2;
+      real_type term;
 
-      C = x - (Pi2 * x4 * x) / 40.0 + (Pi2 * Pi2 * x4 * x4 * x) / 3456.0 - (Pi2 * Pi2 * Pi2 * x6 * x4 * x) / 599040.0;
+      real_type const s{ Utils::m_pi_2 * ( x * x ) };
+      real_type const t{ -s * s };
 
-      S = (Pi * x2 * x) / 6.0 - (Pi * Pi2 * x6 * x) / 336.0 + (Pi * Pi2 * Pi2 * x4 * x6 * x) / 42240.0 - (Pi * Pi2 * Pi2 * Pi2 * x4 * x4 * x6 * x) / 9676800.0;
+      // Cosine integral series
+      real_type twofn{ 0.0 };
+      real_type fact{ 1.0 };
+      real_type denterm{ 1.0 };
+      real_type numterm{ 1.0 };
+      real_type sum{ 1.0 };
+      do
+      {
+        twofn += 2.0;
+        fact *= twofn * ( twofn - 1.0 );
+        denterm += 4.0;
+        numterm *= t;
+        term = numterm / ( fact * denterm );
+        sum += term;
+      } while ( abs( term ) > eps * abs( sum ) );
+
+      C = x * sum;
+
+      // Sine integral series
+      twofn   = 1.0;
+      fact    = 1.0;
+      denterm = 3.0;
+      numterm = 1.0;
+      sum     = 1.0 / 3.0;
+      do
+      {
+        twofn += 2.0;
+        fact *= twofn * ( twofn - 1.0 );
+        denterm += 4.0;
+        numterm *= t;
+        term = numterm / ( fact * denterm );
+        sum += term;
+      } while ( abs( term ) > eps * abs( sum ) );
+
+      S = Utils::m_pi_2 * sum * ( x * x * x );
     }
-    else if (x < 4.0)
+    else if ( x < 6.0 )
     {
-      // Для средних x используем предвычисленные таблицы или аппроксимацию
-      // Здесь можно вызвать более точную функцию из Cephes
-      // Для простоты используем асимптотику (чуть менее точную)
-      double t = Pi * x * x / 2.0;
-      double a = 1.0 / (Pi * x);
-      double b = 1.0 / (Pi2 * x * x * x * x);
+      // Rational approximation for f
+      real_type sumn{ 0.0 };
+      real_type sumd{ fd[11] };
+      for ( integer k = 10; k >= 0; --k )
+      {
+        sumn = fn[k] + x * sumn;
+        sumd = fd[k] + x * sumd;
+      }
+      real_type const f{ sumn / sumd };
 
-      C = 0.5 + a * sin(t) - b * cos(t);
-      S = 0.5 - a * cos(t) - b * sin(t);
+      // Rational approximation for g
+      sumn = 0.0;
+      sumd = gd[11];
+      for ( integer k = 10; k >= 0; --k )
+      {
+        sumn = gn[k] + x * sumn;
+        sumd = gd[k] + x * sumd;
+      }
+      real_type const g{ sumn / sumd };
+      real_type const U{ Utils::m_pi_2 * ( x * x ) };
+      real_type const SinU{ sin( U ) };
+      real_type const CosU{ cos( U ) };
+      C = 0.5 + f * SinU - g * CosU;
+      S = 0.5 - f * CosU - g * SinU;
     }
     else
     {
-      // Асимптотическое разложение для больших x
-      double t = Pi * x * x / 2.0;
-      double a = 1.0 / (Pi * x);
-      double b = 1.0 / (Pi2 * x * x * x * x);
+      real_type absterm;
 
-      C = 0.5 + a * sin(t) - b * cos(t);
-      S = 0.5 - a * cos(t) - b * sin(t);
+      // x >= 6; asymptotic expansions for  f  and  g
+
+      real_type const s{ Utils::m_pi * x * x };
+      real_type const t{ -1 / ( s * s ) };
+
+      // Expansion for f
+      real_type       numterm{ -1.0 };
+      real_type       term{ 1.0 };
+      real_type       sum{ 1.0 };
+      real_type       oldterm{ 1.0 };
+      real_type const eps10{ 0.1 * eps };
+
+      do
+      {
+        numterm += 4.0;
+        term *= numterm * ( numterm - 2.0 ) * t;
+        sum += term;
+        absterm = abs( term );
+        UTILS_ASSERT(
+          oldterm >= absterm,
+          "In FresnelCS f not converged to eps, x = {} oldterm = {} absterm = {}\n",
+          x,
+          oldterm,
+          absterm );
+        oldterm = absterm;
+      } while ( absterm > eps10 * abs( sum ) );
+
+      real_type const f{ sum / ( Utils::m_pi * x ) };
+
+      //  Expansion for  g
+      numterm = -1.0;
+      term    = 1.0;
+      sum     = 1.0;
+      oldterm = 1.0;
+
+      do
+      {
+        numterm += 4.0;
+        term *= numterm * ( numterm + 2.0 ) * t;
+        sum += term;
+        absterm = abs( term );
+        UTILS_ASSERT(
+          oldterm >= absterm,
+          "In FresnelCS g not converged to eps, x = {} oldterm = {} absterm = {}\n",
+          x,
+          oldterm,
+          absterm );
+        oldterm = absterm;
+      } while ( absterm > eps10 * abs( sum ) );
+
+      real_type g{ Utils::m_pi * x };
+      g = sum / ( g * g * x );
+      real_type const U{ Utils::m_pi_2 * ( x * x ) };
+      real_type const SinU{ sin( U ) };
+      real_type const CosU{ cos( U ) };
+      C = 0.5 + f * SinU - g * CosU;
+      S = 0.5 - f * CosU - g * SinU;
     }
-
-    if (negative)
+    if ( y < 0 )
     {
       C = -C;
       S = -S;
     }
-  }
-
-  void FresnelCS( real_type y, real_type & C, real_type & S )
-  {
-    fresnel(y, C, S);
-    return;
   }
 
   // -------------------------------------------------------------------------
@@ -226,7 +350,7 @@ namespace G2lib
     real_type const sg   = sin( g ) / z;
 
     real_type Cl, Sl, Cz, Sz;
-    FresnelCS(ell, Cl, Sl);
+    FresnelCS( ell, Cl, Sl );
     FresnelCS( ell + z, Cz, Sz );
 
     real_type const dC0{ Cz - Cl };
