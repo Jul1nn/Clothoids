@@ -55,7 +55,7 @@
 
 #include "GenericContainer/GenericContainer.hh"
 
-#define PIPAL_EIGEN_EXTERNAL
+// #define PIPAL_EIGEN_EXTERNAL
 #include "Pipal.hh"
 
 #include <string>
