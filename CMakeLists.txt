@@ -120,6 +120,34 @@ endforeach(F ${S})
 # extra include directory for compilation
 include_directories( ./lib3rd/include )
 
+# Найдите строку "include_directories( ./lib3rd/include )" 
+# и ДО или ПОСЛЕ нее добавьте:
+
+# Поиск Eigen3
+find_package(Eigen3 QUIET)
+if(NOT Eigen3_FOUND)
+    # Пробуем найти в стандартных местах
+    find_path(EIGEN3_INCLUDE_DIRS
+        NAMES Eigen/Core
+        PATHS
+            /usr/include/eigen3
+            /usr/local/include/eigen3
+            /opt/include/eigen3
+    )
+    if(EIGEN3_INCLUDE_DIRS)
+        set(Eigen3_FOUND TRUE)
+        message(STATUS "Eigen3 found manually at: ${EIGEN3_INCLUDE_DIRS}")
+    else()
+        message(WARNING "Eigen3 not found. Please install: sudo apt-get install libeigen3-dev")
+    endif()
+endif()
+
+# Добавляем путь к Eigen во все цели
+if(Eigen3_FOUND)
+    include_directories(SYSTEM ${EIGEN3_INCLUDE_DIRS})
+    add_compile_definitions(HAVE_EIGEN3)
+endif()
+
 #       _                           _                 _
 #    __| | ___ _ __   ___ _ __   __| | ___ _ __   ___(_) ___  ___
 #   / _` |/ _ \ '_ \ / _ \ '_ \ / _` |/ _ \ '_ \ / __| |/ _ \/ __|
