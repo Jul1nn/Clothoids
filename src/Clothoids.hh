@@ -31,7 +31,7 @@
 #define CLOTHOIDS_dot_HH
 
 // comment to disable threads support
-// #define CLOTHOIDS_USE_THREADS 1
+#define CLOTHOIDS_USE_THREADS 1
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wsign-compare"
@@ -55,7 +55,7 @@
 
 #include "GenericContainer/GenericContainer.hh"
 
-// #define PIPAL_EIGEN_EXTERNAL
+#define PIPAL_EIGEN_EXTERNAL
 #include "Pipal.hh"
 
 #include <string>
