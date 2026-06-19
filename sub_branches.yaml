@@ -6,5 +6,5 @@ submodules/UtilsLite: develop
 submodules/UtilsLite/cmake_utils: main
 submodules/quarticRootsFlocke: master
 submodules/quarticRootsFlocke/cmake_utils: main
-submodules/GenericContainer: develop
+submodules/GenericContainer: dev
 ...
